@@ -113,28 +113,35 @@ def block_user_agents():
 @app.route("/register", methods=["GET", "POST"])
 @limiter.limit("5 per minute")
 def register():
+    form = RegistrationForm()
     if request.method == "POST":
         email = request.form["email"]
         password = request.form["password"]
         # 驗證格式
         # 1.兩個都不能為空
         if not email or not password:
-            return jsonify({"error": "帳號密碼不能為空"}), 400
+            flash("帳號密碼不能為空")
+            return redirect(url_for("register"))
         # 2.gmail格式
         if not re.match(r"^[a-zA-Z0-9_.+-]+@gmail\.com$", email):
-            return jsonify({"error": "帳號格式錯誤"}), 400
+            flash("請使用 Gmail 地址註冊")
+            return redirect(url_for("register"))
         # 3.密碼長度
         if len(password) < 8:
-            return jsonify({"error": "密碼長度至少為8"}), 400
+            flash("密碼長度不能小於8")
+            return redirect(url_for("register"))
         # 4.密碼要有大寫、小寫、數字
         if not re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$", password):
-            return jsonify({"error": "密碼要有大小寫、數字"}), 400
+            flash("密碼要有大寫、小寫、數字")
+            return redirect(url_for("register"))
         # 檢查帳號是否已被註冊
         if collection.find_one({"email": email}):
-            return jsonify({"error": "該帳號已被註冊"}), 400
+            flash("檢查帳號是否已被註冊")
+            return redirect(url_for("register"))
         # 插入新使用者資料到 MongoDB
         collection.insert_one({"email": email, "password": password})
-    return render_template("register.html")
+        return redirect(url_for("login"))
+    return render_template("register.html", form=form)
 
 
 # 登錄頁面
