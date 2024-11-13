@@ -16,6 +16,7 @@ from flask_wtf.recaptcha import RecaptchaField
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import json
 
 app = Flask(
     __name__,
@@ -224,6 +225,27 @@ def member():
 @app.route("/privacy")
 def privacy():
     return render_template("privacy.html")
+
+
+# json格式
+@app.route("/fetch_data")
+def fetch_data():
+    response = requests.get("https://website-jjt5.onrender.com/register")
+
+    if response.status_code == 200:
+        if response.headers.get("Content-Type") == "application/json":
+            try:
+                data = response.json()
+                return jsonify(data)
+            except json.JSONDecodeError as e:
+                print(f"JSONDecodeError: {e}")
+                return jsonify({"error": "Invalid JSON response"}), 500
+        else:
+            print(f"Unexpected content type: {response.headers.get('Content-Type')}")
+            return jsonify({"error": "Unexpected content type"}), 500
+    else:
+        print(f"Request failed with status code {response.status_code}")
+        return jsonify({"error": "Request failed"}), 500
 
 
 if __name__ == "__main__":
