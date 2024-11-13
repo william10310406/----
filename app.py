@@ -113,41 +113,28 @@ def block_user_agents():
 @app.route("/register", methods=["GET", "POST"])
 @limiter.limit("5 per minute")
 def register():
-    form = RegistrationForm()
-    if form.validate_on_submit():
-        if form.honeypot.data:
-            return "Bot detected!", 400
-        recaptcha_response = request.form.get("g-recaptcha-response")
-        if not verify_recaptcha(recaptcha_response):
-            flash("reCAPTCHA 驗證失敗，請重試。")
-            return redirect(url_for("register"))
-        # 表單提取帳號密碼
-        email = form.email.data
-        password = form.password.data
+    if request.method == "POST":
+        email = request.form["email"]
+        password = request.form["password"]
         # 驗證格式
         # 1.兩個都不能為空
         if not email or not password:
-            session["error_msg"] = "帳號或密碼不能為空"
-            return redirect(url_for("error"))  # 錯誤頁面
+            return jsonify({"error": "帳號密碼不能為空"}), 400
         # 2.gmail格式
         if not re.match(r"^[a-zA-Z0-9_.+-]+@gmail\.com$", email):
-            session["error_msg"] = "帳號格式錯誤"
-            return redirect(url_for("error"))  # 錯誤頁面
+            return jsonify({"error": "帳號格式錯誤"}), 400
         # 3.密碼長度
         if len(password) < 8:
-            session["error_msg"] = "密碼長度至少8位"
-            return redirect(url_for("error"))
+            return jsonify({"error": "密碼長度至少為8"}), 400
         # 4.密碼要有大寫、小寫、數字
         if not re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$", password):
-            session["error_msg"] = "密碼要有大寫、小寫、數字"
-            return redirect("error")
+            return jsonify({"error": "密碼要有大小寫、數字"}), 400
         # 檢查帳號是否已被註冊
         if collection.find_one({"email": email}):
-            session["error_msg"] = "該帳號已被註冊"
-            return redirect(url_for("error"))
+            return jsonify({"error": "該帳號已被註冊"}), 400
         # 插入新使用者資料到 MongoDB
         collection.insert_one({"email": email, "password": password})
-    return render_template("register.html", form=form)
+    return render_template("register.html")
 
 
 # 登錄頁面
