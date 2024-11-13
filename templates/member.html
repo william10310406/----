@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在校成員</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <h1>歡迎</h1>
+    <div class="menu"></div>
+        <label for="options">選擇一個教室：</label>
+        <select id="options">
+            <option value="option0">教室</option>
+            <option value="option1">307</option>
+            <option value="option2">306</option>
+        </select>
+    </div>
+    <div id="date-picker" style="display: none;"></div>
+        <label for="date">選擇日期：</label>
+        <input type="date" id="date">
+    </div>
+    <div id="time-slots" style="display: none;"></div>
+    <button id="reset-button" style="display: none;">重新選擇時段</button>
+    <div id="result"></div>
+</body>
+</html>

@@ -1,0 +1,37 @@
+body {
+    font-family: 'Dancing Script', cursive;
+}
+
+.time-slot {
+    display: inline-block;
+    margin: 5px;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.time-slot:hover {
+    background-color: #0056b3;
+}
+
+.time-slot:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+#reset-button {
+    display: inline-block;
+    margin: 10px 0;
+    padding: 10px 20px;
+    background-color: #ff0000;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#reset-button:hover {
+    background-color: #cc0000;
+}

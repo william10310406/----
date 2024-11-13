@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>error 404</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>錯誤訊息,{{error_message}}</h1>
+    <a href="/">返回首頁</a><br>
+    <a href="/register">返回註冊</a><br>
+    <a href="/login">返回登錄</a>
+</body>
+</html>

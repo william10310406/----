@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>註冊</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://www.google.com/recaptcha/enterprise.js" async defer></script>
+</head>
+<body>
+    <h1>註冊畫面</h1>
+    <form action="/register" method="post">
+        {{ form.hidden_tag() }}
+        <label for="email">電子郵件：</label>
+        {{ form.email }}
+        <label for="password">密碼：</label>
+        {{ form.password }}
+        {{ form.recaptcha }}
+        <div class="g-recaptcha" data-sitekey="6LfLPnwqAAAAALG7AW42sl3IWvS3NnxRrTcoDygK" data-action="REGISTER"></div>
+        <button type="submit">提交</button>
+    </form>
+    <a href="/">返回首頁</a>
+</body>
+</html>
