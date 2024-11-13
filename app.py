@@ -220,5 +220,11 @@ def member():
     return render_template("member.html")
 
 
+# 隱私權政策
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=3000, debug=True)  # 啟動伺服器
