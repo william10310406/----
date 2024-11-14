@@ -112,7 +112,8 @@ def block_user_agents():
 # 註冊頁面
 @app.route("/registerpage", methods=["GET", "POST"])
 def registerpage():
-    return render_template("register.html")
+    form = RegistrationForm()
+    return render_template("register.html", form=form)
 
 
 # 註冊功能
@@ -151,15 +152,20 @@ def register():
 
 
 # 登錄頁面
+@app.route("/loginpage")
+def loginpage():
+    form = LoginForm()
+    return render_template("login.html", form=form)
+
+
+# 登錄功能
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
 def login():
     form = LoginForm()
-    if form.validate_on_submit():
-        if form.honeypot.data:
-            return "Bot detected!", 400
-        # 表單提取帳號密碼
-        email = form.email.data
-        password = form.password.data
+    if request.method == "POST":
+        email = request.form["email"]
+        password = request.form["password"]
         # 驗證格式
         # 2.gmail格式
         if not re.match(r"^[a-zA-Z0-9_.+-]+@gmail\.com$", email):
