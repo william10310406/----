@@ -110,6 +110,12 @@ def block_user_agents():
 
 
 # 註冊頁面
+@app.route("/registerpage", methods=["GET", "POST"])
+def registerpage():
+    return render_template("register.html")
+
+
+# 註冊功能
 @app.route("/register", methods=["GET", "POST"])
 @limiter.limit("5 per minute")
 def register():
