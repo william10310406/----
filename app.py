@@ -16,6 +16,7 @@ from flask_wtf.recaptcha import RecaptchaField
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from werkzeug.security import generate_password_hash, check_password_hash
 import json
 
 app = Flask(
@@ -145,8 +146,9 @@ def register():
         if collection.find_one({"email": email}):
             flash("檢查帳號是否已被註冊")
             return redirect(url_for("register"))
-        # 插入新使用者資料到 MongoDB
-        collection.insert_one({"email": email, "password": password})
+        # 插入新使用者資料到 MongoDB、密碼加密
+        hashed_password = generate_password_hash(password, method="pbkdf2:sha256")
+        collection.insert_one({"email": email, "password": hashed_password})
         return redirect(url_for("login"))
     return render_template("register.html", form=form)
 
@@ -175,10 +177,10 @@ def login():
         if not email or not password:
             session["error_msg"] = "帳號或密碼不能為空"
             return redirect(url_for("error"))
-        # 驗證帳號密碼
-        user = collection.find_one({"email": email, "password": password})
-        # 帳號密碼正確
-        if user and user["password"] == password:
+        # 驗證帳號
+        user = collection.find_one({"email": email})
+        # 帳號密碼正確、確認哈希密碼
+        if user and check_password_hash(user["password"], password):
             # 登錄成功，導向在校成員頁面，並設定session
             return redirect(url_for("member"))
         # 帳號密碼錯誤
