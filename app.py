@@ -209,6 +209,7 @@ def login():
         # 帳號密碼正確、確認哈希密碼
         if user and check_password_hash(user["password"], password):
             # 登錄成功，導向在校成員頁面，並設定session
+            session["email"] = email
             return redirect(url_for("member"))
         # 帳號密碼錯誤
         else:
@@ -217,6 +218,14 @@ def login():
     # 動態生成 token
     token = generate_verification_token("example@example.com")
     return render_template("login.html", form=form, token=token)
+
+
+# 登出功能
+@app.route("/logout")
+def logout():
+    session.pop("email", None)  # 清除用戶的 session 資料
+    flash("你已成功登出")
+    return redirect(url_for("login"))
 
 
 # 忘記密碼頁面
@@ -271,7 +280,28 @@ def error():
 # 在校成員頁面
 @app.route("/member")
 def member():
+    if "email" not in session:
+        flash("請先登錄")
+        return redirect(url_for("login"))
     return render_template("member.html")
+
+
+# 在校成員的個人資料頁面
+@app.route("/profile")
+def profile():
+    # 假設用戶的電子郵件存儲在 session 中
+    email = session.get("email")
+    if not email:
+        flash("請先登錄")
+        return redirect(url_for("login"))
+    # 從數據庫中獲取用戶的個人資料
+    user = collection.find_one({"email": email})
+    if not user:
+        flash("用戶不存在")
+        return redirect(url_for("login"))
+    return render_template(
+        "profile.html", name=user.get("name"), email=user.get("email")
+    )
 
 
 # 隱私權政策
