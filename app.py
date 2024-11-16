@@ -76,6 +76,11 @@ class ForgotPasswordForm(FlaskForm):
     submit = SubmitField("提交")
 
 
+class EditProfileForm(FlaskForm):
+    new_name = StringField("新姓名", validators=[DataRequired()])
+    submit = SubmitField("提交")
+
+
 def verify_recaptcha(response):
     secret = app.config["RECAPTCHA_PRIVATE_KEY"]
     payload = {"secret": secret, "response": response}
@@ -287,20 +292,26 @@ def member():
 
 
 # 在校成員的個人資料頁面
-@app.route("/profile")
+@app.route("/profile", methods=["GET", "POST"])
 def profile():
-    # 假設用戶的電子郵件存儲在 session 中
-    email = session.get("email")
-    if not email:
+    if "email" not in session:
         flash("請先登錄")
         return redirect(url_for("login"))
-    # 從數據庫中獲取用戶的個人資料
+
+    email = session["email"]
     user = collection.find_one({"email": email})
     if not user:
         flash("用戶不存在")
         return redirect(url_for("login"))
+
+    form = EditProfileForm()
+    if form.validate_on_submit():
+        new_name = form.new_name.data
+        collection.update_one({"email": email}, {"$set": {"name": new_name}})
+        flash("姓名已成功修改")
+        return redirect(url_for("profile"))
     return render_template(
-        "profile.html", name=user.get("name"), email=user.get("email")
+        "profile.html", name=user.get("name"), email=user.get("email"), form=form
     )
 
 
