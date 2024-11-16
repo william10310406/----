@@ -18,6 +18,9 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 import json
+from flask_mail import Mail
+import jwt
+from datetime import datetime, timedelta
 
 app = Flask(
     __name__,
@@ -25,6 +28,15 @@ app = Flask(
     static_url_path="/",
 )
 app.secret_key = "22303248"  # session有密鑰，自己設定
+
+# 連接MongoDB
+client = MongoClient(
+    "mongodb+srv://william10310406:A22303248@cluster0.mpwsv.mongodb.net/"
+)
+db = client["flask"]  # 選擇資料庫
+collection = db["user"]  # 選擇集合
+
+
 # 限制請求速率防止大量提交表單
 limiter = Limiter(
     get_remote_address, app=app, default_limits=["200 per day", "50 per hour"]
@@ -34,6 +46,15 @@ limiter = Limiter(
 app.config["RECAPTCHA_PUBLIC_KEY"] = "6LfLPnwqAAAAALG7AW42sl3IWvS3NnxRrTcoDygK"
 app.config["RECAPTCHA_PRIVATE_KEY"] = "6LfLPnwqAAAAALG7AW42sl3IWvS3NnxRrTcoDygK"
 csrf = CSRFProtect(app)
+
+
+# 配置 Flask-Mail
+app.config["MAIL_SERVER"] = "smtp.gmail.com"
+app.config["MAIL_PORT"] = 587
+app.config["MAIL_USE_TLS"] = True
+app.config["MAIL_USERNAME"] = "your_email@gmail.com"
+app.config["MAIL_PASSWORD"] = "your_email_password"
+mail = Mail(app)
 
 
 class RegistrationForm(FlaskForm):
@@ -50,6 +71,11 @@ class LoginForm(FlaskForm):
     submit = SubmitField("Login")
 
 
+class ForgotPasswordForm(FlaskForm):
+    email = StringField("Email", validators=[DataRequired(), Email()])
+    submit = SubmitField("提交")
+
+
 def verify_recaptcha(response):
     secret = app.config["RECAPTCHA_PRIVATE_KEY"]
     payload = {"secret": secret, "response": response}
@@ -57,13 +83,6 @@ def verify_recaptcha(response):
     result = r.json()
     return result.get("success", False)
 
-
-# 連接MongoDB
-client = MongoClient(
-    "mongodb+srv://william10310406:A22303248@cluster0.mpwsv.mongodb.net/"
-)
-db = client["flask"]  # 選擇資料庫
-collection = db["user"]  # 選擇集合
 
 # 如果修改這些範圍，刪除 token.json 文件
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
@@ -84,7 +103,7 @@ def get_credentials():
     return creds
 
 
-# 寄送郵件的function
+# 寄送重設密碼郵件的function
 def send_email(to, subject, body):
     creds = get_credentials()
     service = googleapiclient.discovery.build("gmail", "v1", credentials=creds)
@@ -94,6 +113,14 @@ def send_email(to, subject, body):
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     message = {"raw": raw}
     service.users().messages().send(userId="me", body=message).execute()
+
+
+def generate_verification_token(email):
+    expiration = datetime.utcnow() + timedelta(hours=24)
+    token = jwt.encode(
+        {"email": email, "exp": expiration}, app.secret_key, algorithm="HS256"
+    )
+    return token
 
 
 # 首頁
@@ -128,24 +155,24 @@ def register():
         # 驗證格式
         # 1.兩個都不能為空
         if not email or not password:
-            flash("帳號密碼不能為空")
-            return redirect(url_for("register"))
+            session["error_msg"] = "帳號或密碼不能為空"
+            return redirect(url_for("error"))
         # 2.gmail格式
         if not re.match(r"^[a-zA-Z0-9_.+-]+@gmail\.com$", email):
-            flash("請使用 Gmail 地址註冊")
-            return redirect(url_for("register"))
+            session["error_msg"] = "帳號格式錯誤"
+            return redirect(url_for("error"))
         # 3.密碼長度
         if len(password) < 8:
-            flash("密碼長度不能小於8")
-            return redirect(url_for("register"))
+            session["error_msg"] = "密碼長度至少為8"
+            return redirect(url_for("error"))
         # 4.密碼要有大寫、小寫、數字
         if not re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$", password):
-            flash("密碼要有大寫、小寫、數字")
-            return redirect(url_for("register"))
+            session["error_msg"] = "密碼必須包含大寫字母、小寫字母和數字"
+            return redirect(url_for("error"))
         # 檢查帳號是否已被註冊
         if collection.find_one({"email": email}):
-            flash("檢查帳號是否已被註冊")
-            return redirect(url_for("register"))
+            session["error_msg"] = "帳號已被註冊"
+            return redirect(url_for("error"))
         # 插入新使用者資料到 MongoDB、密碼加密
         hashed_password = generate_password_hash(password, method="pbkdf2:sha256")
         collection.insert_one({"email": email, "password": hashed_password})
@@ -187,32 +214,50 @@ def login():
         else:
             session["error_msg"] = "帳號或密碼錯誤"
             return redirect(url_for("error"))
-
-    return render_template("login.html", form=form)
+    # 動態生成 token
+    token = generate_verification_token("example@example.com")
+    return render_template("login.html", form=form, token=token)
 
 
 # 忘記密碼頁面
 @app.route("/forgot_password", methods=["GET", "POST"])
 def forgot_password():
+    form = ForgotPasswordForm()
     if request.method == "POST":
         email = request.form["email"]
-        # 在這裡查找用戶並生成重設密碼的連結
-        token = "some_unique_token"  # 生成一個唯一的 token
-        reset_url = url_for("reset_password", token=token, _external=True)
-        send_email(email, "重設密碼", f"請點擊以下連結重設密碼：{reset_url}")
-        flash("重設密碼的郵件已發送到您的郵箱。")
-        return redirect(url_for("login"))
-    return render_template("forgot_password.html")
+        user = collection.find_one({"email": email})
+        if user:
+            token = generate_verification_token(email)
+            reset_url = url_for("reset_password", token=token, _external=True)
+            body = f"請點擊以下鏈接重設你的密碼：{reset_url}"
+            send_email(email, "重設密碼", body)
+            flash("重設密碼的郵件已發送，請檢查你的電子郵件。")
+            return redirect(url_for("login"))
+        else:
+            flash("該電子郵件地址未註冊。")
+            return redirect(url_for("forgot_password"))
+    return render_template("forgot_password.html", form=form)
 
 
 # 重設密碼頁面
 @app.route("/reset_password/<token>", methods=["GET", "POST"])
 def reset_password(token):
+    try:
+        data = jwt.decode(token, app.secret_key, algorithms=["HS256"])
+        email = data["email"]
+    except jwt.ExpiredSignatureError:
+        flash("重設密碼鏈接已過期。")
+        return redirect(url_for("forgot_password"))
+    except jwt.InvalidTokenError:
+        flash("無效的重設密碼鏈接。")
+        return redirect(url_for("forgot_password"))
     if request.method == "POST":
         password = request.form["password"]
-        # 在這裡更新用戶的密碼
+        hashed_password = generate_password_hash(password, method="pbkdf2:sha256")
+        collection.update_one({"email": email}, {"$set": {"password": hashed_password}})
         flash("密碼已成功重設。")
         return redirect(url_for("login"))
+
     return render_template("reset_password.html", token=token)
 
 
